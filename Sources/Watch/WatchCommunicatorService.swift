@@ -21,23 +21,31 @@ final class WatchCommunicatorService {
         Current.servers.add(observer: self)
 
         // This directly mutates the data structure for observations to avoid race conditions.
-        Communicator.State.observations.store[.init(queue: .main)] = { state in
+        Communicator.State.observe(queue: .main) { state in
             Current.Log.verbose("Activation state changed: \(state)")
             _ = HomeAssistantAPI.SyncWatchContext()
         }
 
-        WatchState.observations.store[.init(queue: .main)] = { watchState in
+        WatchState.observe(queue: .main) { watchState in
             Current.Log.verbose("Watch state changed: \(watchState)")
             _ = HomeAssistantAPI.SyncWatchContext()
         }
 
-        Reachability.observations.store[.init(queue: .main)] = { reachability in
+        Reachability.observe(queue: .main) { reachability in
             Current.Log.verbose("Reachability changed: \(reachability)")
         }
 
         setupMessages()
 
-        Context.observations.store[.init(queue: .main)] = { context in
+        Blob.observe(queue: .main) { [weak self] blob in
+            Current.Log.verbose("Received blob: \(blob.identifier)")
+
+            if blob.identifier == InteractiveImmediateMessages.assistAudioData.rawValue {
+                self?.assistAudioData(blob: blob)
+            }
+        }
+
+        Context.observe(queue: .main) { context in
             Current.Log.verbose("Received context: \(context.content.keys) \(context.content)")
 
             if let modelIdentifier = context.content[WatchContext.watchModel.rawValue] as? String {
@@ -51,7 +59,7 @@ final class WatchCommunicatorService {
     }
 
     private func setupMessages() {
-        InteractiveImmediateMessage.observations.store[.init(queue: .main)] = { [weak self] message in
+        InteractiveImmediateMessage.observe(queue: .main) { [weak self] message in
             Current.Log.verbose("Received \(message.identifier) \(message) \(message.content)")
 
             guard let self, let messageId = InteractiveImmediateMessages(rawValue: message.identifier) else {

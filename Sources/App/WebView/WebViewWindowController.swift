@@ -4,6 +4,7 @@ import PromiseKit
 import Shared
 import SwiftUI
 import UIKit
+import PMKFoundation
 
 final class WebViewWindowController {
     enum RootViewControllerType {
